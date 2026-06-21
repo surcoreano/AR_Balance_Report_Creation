@@ -24,11 +24,11 @@ jobs:
 
       - name: EXE 빌드
         run: |
-          pyinstaller --onefile --noconsole --name "Netting_PDF_Splitter" split_netting.py
+          pyinstaller --onefile --noconsole --name "AR Balance Creation" AR Balance Creation.py
 
       - name: EXE 업로드 (다운로드용)
         uses: actions/upload-artifact@v4
         with:
-          name: Netting_PDF_Splitter_Windows
-          path: dist/Netting_PDF_Splitter.exe
+          name: AR_Balance_Report_Creation_Windows
+          path: dist/AR_Balance_Report_Creation.exe
           retention-days: 30
