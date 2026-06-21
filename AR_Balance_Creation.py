@@ -9,7 +9,7 @@ from datetime import datetime
 from tkinter import filedialog, messagebox, ttk
 
 # ─────────────────────────────
-# Theme & Typography (디자인 설정)
+# Theme & Typography (UI 디자인 설정)
 # ─────────────────────────────
 if platform.system() == "Darwin":
     FN = "Arial"
@@ -28,12 +28,12 @@ BORDER = "#dadce0"
 LOG_BG = "#f8f9fa"
 
 # ─────────────────────────────
-# 다국어 지원 텍스트 (예시 텍스트 260625로 변경)
+# 다국어 지원 텍스트
 # ─────────────────────────────
 TEXTS = {
     "EN": {
         "title": "Excel Report Generator",
-        "header": "Netting PDF Splitter",
+        "header": "AR Balance Report Creator",
         "subtitle": "Split PDF files automatically by trading partner.",
         "language": "Language",
         "excel_file": "Excel file",
@@ -54,13 +54,13 @@ TEXTS = {
         "done": "Completed",
         "reading_excel": "Reading and analyzing Excel data...",
         "processing": "Formatting and filtering data...",
-        "saving": "Saving new Excel file...",
+        "saving": "Applying styles and saving Excel file...",
         "completed_status": "Completed successfully. File saved.",
         "completed_msg": "Excel report generation is complete.\n\nSaved location:\n{}"
     },
     "ES": {
         "title": "Generador de Reportes Excel",
-        "header": "Netting PDF Splitter",
+        "header": "AR Balance Report Creator",
         "subtitle": "Divida archivos PDF automáticamente por socio comercial.",
         "language": "Idioma",
         "excel_file": "Archivo Excel",
@@ -81,13 +81,13 @@ TEXTS = {
         "done": "Completado",
         "reading_excel": "Leyendo y analizando datos de Excel...",
         "processing": "Formateando y filtrando datos...",
-        "saving": "Guardando nuevo archivo Excel...",
+        "saving": "Aplicando estilos y guardando archivo Excel...",
         "completed_status": "Completado con éxito. Archivo guardado.",
         "completed_msg": "La generación del reporte Excel ha finalizado.\n\nUbicación:\n{}"
     },
     "KR": {
         "title": "Excel 리포트 생성기",
-        "header": "Netting PDF Splitter",
+        "header": "AR Balance Report Creator",
         "subtitle": "거래선별로 리포트를 자동으로 분할하고 포맷팅합니다.",
         "language": "언어",
         "excel_file": "원본 Excel 파일",
@@ -108,7 +108,7 @@ TEXTS = {
         "done": "완료",
         "reading_excel": "Excel 데이터를 읽고 분석하는 중...",
         "processing": "데이터를 포맷팅하고 필터링하는 중...",
-        "saving": "새로운 Excel 파일로 저장하는 중...",
+        "saving": "서식을 지정하고 정밀 저장하는 중...",
         "completed_status": "성공적으로 완료되었습니다.",
         "completed_msg": "엑셀 리포트 생성이 완료되었습니다.\n\n저장 위치:\n{}"
     }
@@ -117,7 +117,7 @@ TEXTS = {
 class App(tk.Tk):
     def __init__(self):
         super().__init__()
-        self.lang = tk.StringVar(value="EN")
+        self.lang = tk.StringVar(value="ES")  # 기본 언어 스페인어로 지정 가능
         
         self.excel_file = tk.StringVar()
         self.output_folder = tk.StringVar()
@@ -286,7 +286,7 @@ class App(tk.Tk):
                 self._set_status(20, self.t("reading_excel"))
                 self._log(f"Reading target file: {os.path.basename(excel_path)}")
                 
-                # 💡 [핵심 보완] 숨겨진 행이나 타이틀이 있을 경우를 대비해 'Invoice No'가 있는 행을 자동 탐색
+                # 시스템 유도 타이틀 행 무시 처리 자동화 스캔
                 temp_df = pd.read_excel(excel_path, header=None, nrows=30)
                 header_idx = 0
                 for i, row in temp_df.iterrows():
@@ -294,12 +294,11 @@ class App(tk.Tk):
                         header_idx = i
                         break
                         
-                # 찾은 헤더(컬럼명) 위치를 기준으로 데이터를 정확히 다시 읽어옴
                 original_df = pd.read_excel(excel_path, header=header_idx)
                 df = original_df.copy()
 
                 self._set_status(40, self.t("processing"))
-                self._log("Processing Reference No...")
+                self._log("Processing Reference No tracking...")
                 
                 fill_cols = ['Reference No', 'PO No', 'Comments', 'Invoice Remark']
                 for col in fill_cols:
@@ -314,11 +313,8 @@ class App(tk.Tk):
                 if 'Invoice Remark' in df.columns: df['Reference No'] = df['Reference No'].fillna(df['Invoice Remark'])
 
                 self._log("Filtering and renaming columns to Spanish...")
-                
-                # 💡 [핵심 보완] 시스템 엑셀 파일의 고질적인 띄어쓰기 문제(스페이스 2칸 등)를 1칸으로 자동 통일 보정
                 df.columns = [' '.join(str(c).split()) for c in df.columns]
 
-                # 띄어쓰기가 보정된 컬럼명으로 리스트 재설정
                 columns_to_keep = [
                     'Invoice No.', 'AR Class', 'Trx Date', 'Due Date', 
                     'Original Amount (Entered Curr.)', 'Balance Total', 
@@ -328,15 +324,10 @@ class App(tk.Tk):
                 df = df[existing_cols]
 
                 rename_dict = {
-                    'Invoice No.': 'Factura', 
-                    'AR Class': 'Tipología', 
-                    'Trx Date': 'Fecha emisión',
-                    'Due Date': 'Fecha Vencimiento', 
-                    'Original Amount (Entered Curr.)': 'Importe',
-                    'Balance Total': 'Balance', 
-                    'Bill To Code': 'Código Cliente',
-                    'Bill To Name': 'Nombre Cliente', 
-                    'Reference No': 'Referencia'
+                    'Invoice No.': 'Factura', 'AR Class': 'Tipología', 'Trx Date': 'Fecha emisión',
+                    'Due Date': 'Fecha Vencimiento', 'Original Amount (Entered Curr.)': 'Importe',
+                    'Balance Total': 'Balance', 'Bill To Code': 'Código Cliente',
+                    'Bill To Name': 'Nombre Cliente', 'Reference No': 'Referencia'
                 }
                 df = df.rename(columns=rename_dict)
 
@@ -345,7 +336,6 @@ class App(tk.Tk):
                     df['Tipología'] = df['Tipología'].replace(ar_class_mapping)
 
                 self._log("Filtering dates and sorting data...")
-                
                 if 'Fecha Vencimiento' in df.columns:
                     df['Fecha Vencimiento'] = pd.to_datetime(df['Fecha Vencimiento'], errors='coerce')
                     df = df[df['Fecha Vencimiento'] <= payment_due_date]
@@ -354,22 +344,134 @@ class App(tk.Tk):
                 if sort_cols:
                     df = df.sort_values(by=sort_cols, ascending=[True]*len(sort_cols))
 
+                # 💡 [요구사항 3] 날짜 데이터 형태 정제 (시간 분초 강제 삭제 및 YYYY-MM-DD 화)
+                for date_col in ['Fecha emisión', 'Fecha Vencimiento']:
+                    if date_col in df.columns:
+                        df[date_col] = pd.to_datetime(df[date_col], errors='coerce').dt.strftime('%Y-%m-%d').fillna('')
+
+                # 💡 [요구사항 2] 정해진 스페인어 컬럼 순서 배열 강제 조정
+                target_order = ['Código Cliente', 'Nombre Cliente', 'Tipología', 'Factura', 'Fecha emisión', 'Fecha Vencimiento', 'Importe', 'Balance', 'Referencia']
+                final_order = [col for col in target_order if col in df.columns]
+                df = df[final_order]
+
+                # 숫자 데이터 강제 파싱 및 결측치 수렴
+                for num_col in ['Importe', 'Balance']:
+                    if num_col in df.columns:
+                        df[num_col] = pd.to_numeric(df[num_col], errors='coerce').fillna(0)
+
+                # 💡 [요구사항 5] Summary Sheet 피벗 데이터 빌드
+                self._log("Generating Summary Data (Group by Client)...")
+                if 'Código Cliente' in df.columns and 'Nombre Cliente' in df.columns and 'Balance' in df.columns:
+                    df_summary = df.groupby(['Código Cliente', 'Nombre Cliente'], as_index=False)['Balance'].sum()
+                    df_summary = df_summary.sort_values(by='Nombre Cliente', ascending=True)
+                else:
+                    df_summary = pd.DataFrame(columns=['Código Cliente', 'Nombre Cliente', 'Balance'])
+
                 self._set_status(70, self.t("saving"))
                 
                 filename = os.path.basename(excel_path)
                 name, ext = os.path.splitext(filename)
                 output_filepath = os.path.join(output_dir, f"{name}_Report{ext}")
 
-                self._log(f"Saving to: {output_filepath}")
+                self._log("Applying strict fonts and colors styles via openpyxl...")
 
-                # 파일 저장
-                with pd.ExcelWriter(output_filepath, engine='openpyxl', datetime_format='YYYY-MM-DD') as writer:
-                    original_df.to_excel(writer, sheet_name='Original Data', index=False)
+                # 💡 [요구사항 1, 4, 5] 서식 통합 레이아웃 엔진 가동
+                with pd.ExcelWriter(output_filepath, engine='openpyxl') as writer:
+                    df_summary.to_excel(writer, sheet_name='Summary', index=False)
                     df.to_excel(writer, sheet_name='Report Format', index=False)
+                    original_df.to_excel(writer, sheet_name='Original Data', index=False)
+                    
+                    workbook = writer.book
+                    from openpyxl.styles import Font, PatternFill, Alignment, Border, Side
+                    from openpyxl.utils import get_column_letter
+
+                    # 폰트 구성 객체 생성 (Arial Narrow, Size 10 고정)
+                    font_regular = Font(name='Arial Narrow', size=10)
+                    font_bold = Font(name='Arial Narrow', size=10, bold=True)
+                    font_red = Font(name='Arial Narrow', size=10, color='FF0000')
+                    font_red_bold = Font(name='Arial Narrow', size=10, color='FF0000', bold=True)
+                    
+                    header_fill = PatternFill(start_color='E8F0FE', end_color='E8F0FE', fill_type='solid')
+                    total_fill = PatternFill(start_color='F1F3F4', end_color='F1F3F4', fill_type='solid')
+                    
+                    thin_side = Side(style='thin', color='DADCE0')
+                    thin_border = Border(left=thin_side, right=thin_side, top=thin_side, bottom=thin_side)
+                    
+                    # 💡 회계 금융 규격 커스텀 넘버 포맷 코드 (양수, 음수 괄호형, 0은 대시)
+                    num_format = '#,##0.00;[Red](#,##0.00);"-"'
+
+                    for sheet_name in ['Summary', 'Report Format', 'Original Data']:
+                        if sheet_name not in workbook.sheetnames:
+                            continue
+                        ws = workbook[sheet_name]
+                        col_names = [str(cell.value).strip() for cell in ws[1]]
+                        
+                        # 헤더 바인딩 서식
+                        for cell in ws[1]:
+                            cell.font = font_bold
+                            cell.fill = header_fill
+                            cell.alignment = Alignment(horizontal='center', vertical='center')
+                            cell.border = thin_border
+                        
+                        # 전 데이터 셀 순회 적용
+                        for row in range(2, ws.max_row + 1):
+                            for col in range(1, ws.max_column + 1):
+                                cell = ws.cell(row=row, column=col)
+                                cell.font = font_regular
+                                cell.border = thin_border
+                                
+                                col_name = col_names[col-1] if col-1 < len(col_names) else ''
+                                
+                                # 수치 컬럼 탐색 서식 할당
+                                if col_name in ['Importe', 'Balance', 'Original Amount (Entered Curr.)', 'Balance Total']:
+                                    cell.number_format = num_format
+                                    if isinstance(cell.value, (int, float)) and cell.value < 0:
+                                        cell.font = font_red
+                                    cell.alignment = Alignment(horizontal='right')
+                                elif col_name in ['Código Cliente', 'Factura', 'Tipología', 'Fecha emisión', 'Fecha Vencimiento', 'Bill To Code', 'Invoice No.', 'AR Class']:
+                                    cell.alignment = Alignment(horizontal='center')
+                                else:
+                                    cell.alignment = Alignment(horizontal='left')
+                        
+                        # Summary 하단 토탈 마감 빌드
+                        if sheet_name == 'Summary' and ws.max_row > 1:
+                            total_row = ws.max_row + 1
+                            
+                            c_lbl = ws.cell(row=total_row, column=1, value='Total')
+                            c_lbl.font = font_bold
+                            c_lbl.alignment = Alignment(horizontal='center')
+                            c_lbl.fill = total_fill
+                            c_lbl.border = thin_border
+                            
+                            c_emp = ws.cell(row=total_row, column=2, value='')
+                            c_emp.fill = total_fill
+                            c_emp.border = thin_border
+                            
+                            if 'Balance' in col_names:
+                                b_idx = col_names.index('Balance') + 1
+                                b_letter = get_column_letter(b_idx)
+                                formula = f"=SUM({b_letter}2:{b_letter}{total_row-1})"
+                                
+                                c_sum = ws.cell(row=total_row, column=b_idx, value=formula)
+                                c_sum.font = font_bold
+                                c_sum.number_format = num_format
+                                c_sum.alignment = Alignment(horizontal='right')
+                                c_sum.fill = total_fill
+                                c_sum.border = thin_border
+                        
+                        # 가시성을 위한 자동 열 너비 계산 조절 알고리즘
+                        for col in ws.columns:
+                            max_len = 0
+                            for cell in col:
+                                val_str = str(cell.value or '')
+                                if val_str.startswith('='):
+                                    val_str = "1,000,000.00"
+                                max_len = max(max_len, len(val_str))
+                            col_letter = get_column_letter(col[0].column)
+                            ws.column_dimensions[col_letter].width = max(max_len + 4, 13)
 
                 self._set_status(100, self.t("completed_status"))
                 self._log(f"[{datetime.now().strftime('%H:%M:%S')}] Task completed successfully.")
-                
                 messagebox.showinfo(self.t("done"), self.t("completed_msg").format(output_filepath))
 
             except Exception as e:
