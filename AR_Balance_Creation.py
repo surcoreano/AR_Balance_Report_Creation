@@ -28,13 +28,13 @@ BORDER = "#dadce0"
 LOG_BG = "#f8f9fa"
 
 # ─────────────────────────────
-# 다국어 지원 텍스트 (기능에 맞춰 헤더, 서브타이틀, 예시 일괄 변경)
+# 다국어 지원 텍스트 (AR Balance 용도로 전면 수정)
 # ─────────────────────────────
 TEXTS = {
     "EN": {
-        "title": "Netting Excel Generator",
-        "header": "Netting Excel Generator",
-        "subtitle": "Format Excel files and generate netting summary automatically.",
+        "title": "AR Balance Report Generator",
+        "header": "AR Balance Report Generator",
+        "subtitle": "Format Excel files and generate AR Balance summary automatically.",
         "language": "Language",
         "excel_file": "Excel file",
         "output_folder": "Output folder",
@@ -59,9 +59,9 @@ TEXTS = {
         "completed_msg": "Excel report generation is complete.\n\nSaved location:\n{}"
     },
     "ES": {
-        "title": "Generador de Excel Netting",
-        "header": "Generador de Excel Netting",
-        "subtitle": "Formatee archivos de Excel y genere un resumen de netting automáticamente.",
+        "title": "Generador de Reportes AR Balance",
+        "header": "Generador de Reportes AR Balance",
+        "subtitle": "Formatee archivos de Excel y genere un resumen de AR Balance automáticamente.",
         "language": "Idioma",
         "excel_file": "Archivo Excel",
         "output_folder": "Carpeta de destino",
@@ -86,9 +86,9 @@ TEXTS = {
         "completed_msg": "La generación del reporte Excel ha finalizado.\n\nUbicación:\n{}"
     },
     "KR": {
-        "title": "Netting 엑셀 리포트 생성기",
-        "header": "Netting 엑셀 리포트 생성기",
-        "subtitle": "Excel 데이터를 포맷팅하고 상계(Netting) 요약본을 자동으로 생성합니다.",
+        "title": "AR Balance 엑셀 리포트 생성기",
+        "header": "AR Balance 엑셀 리포트 생성기",
+        "subtitle": "Excel 데이터를 포맷팅하고 AR Balance 요약본을 자동으로 생성합니다.",
         "language": "언어",
         "excel_file": "원본 Excel 파일",
         "output_folder": "결과물 저장 폴더",
@@ -117,7 +117,7 @@ TEXTS = {
 class App(tk.Tk):
     def __init__(self):
         super().__init__()
-        self.lang = tk.StringVar(value="ES")  # 기본 언어 설정
+        self.lang = tk.StringVar(value="ES")
         
         self.excel_file = tk.StringVar()
         self.output_folder = tk.StringVar()
@@ -367,19 +367,17 @@ class App(tk.Tk):
                 name, ext = os.path.splitext(filename)
                 output_filepath = os.path.join(output_dir, f"{name}_Report{ext}")
 
-                self._log("Applying strict fonts and colors styles via openpyxl...")
+                self._log("Applying strict fonts, colors and auto-filters via openpyxl...")
 
                 with pd.ExcelWriter(output_filepath, engine='openpyxl') as writer:
                     df_summary.to_excel(writer, sheet_name='Summary', index=False)
                     df.to_excel(writer, sheet_name='Report Format', index=False)
-                    # 원본 시트는 아무 서식 변경 없이 원본 그대로 보존하여 데이터 로드
                     original_df.to_excel(writer, sheet_name='Original Data', index=False)
                     
                     workbook = writer.book
                     from openpyxl.styles import Font, PatternFill, Alignment, Border, Side
                     from openpyxl.utils import get_column_letter
 
-                    # 💡 [요구사항 반영] Arial Narrow 대신 Aptos Narrow 폰트 적용
                     font_regular = Font(name='Aptos Narrow', size=10)
                     font_bold = Font(name='Aptos Narrow', size=10, bold=True)
                     font_red = Font(name='Aptos Narrow', size=10, color='FF0000')
@@ -390,21 +388,21 @@ class App(tk.Tk):
                     
                     num_format = '#,##0.00;[Red](#,##0.00);"-"'
 
-                    # 💡 [요구사항 반영] 서식 순회 대상에서 'Original Data' 완전 제외 (Summary 및 Report Format만 반영)
                     for sheet_name in ['Summary', 'Report Format']:
                         if sheet_name not in workbook.sheetnames:
                             continue
                         ws = workbook[sheet_name]
                         col_names = [str(cell.value).strip() for cell in ws[1]]
                         
-                        # 헤더 스타일
+                        max_col_letter = get_column_letter(ws.max_column)
+                        ws.auto_filter.ref = f"A1:{max_col_letter}{ws.max_row}"
+                        
                         for cell in ws[1]:
                             cell.font = font_bold
                             cell.fill = header_fill
                             cell.alignment = Alignment(horizontal='center', vertical='center')
                             cell.border = thin_border
                         
-                        # 본문 스타일 및 금융 규격 커스텀 넘버 포맷팅
                         for row in range(2, ws.max_row + 1):
                             for col in range(1, ws.max_column + 1):
                                 cell = ws.cell(row=row, column=col)
@@ -423,9 +421,6 @@ class App(tk.Tk):
                                 else:
                                     cell.alignment = Alignment(horizontal='left')
                         
-                        # 💡 [요구사항 반영] Summary 하단 Total 합계 라인 코드 통째로 삭제 처리 완료
-                        
-                        # 너비 보정
                         for col in ws.columns:
                             max_len = 0
                             for cell in col:
