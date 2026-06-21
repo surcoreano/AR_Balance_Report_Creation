@@ -34,7 +34,7 @@ TEXTS = {
     "EN": {
         "title": "Excel Report Generator",
         "header": "AR Balance Report Creator",
-        "subtitle": "Split PDF files automatically by trading partner.",
+        "subtitle": "Create AR Balance Excel File automatically by partners.",
         "language": "Language",
         "excel_file": "Excel file",
         "output_folder": "Output folder",
@@ -61,7 +61,7 @@ TEXTS = {
     "ES": {
         "title": "Generador de Reportes Excel",
         "header": "AR Balance Report Creator",
-        "subtitle": "Divida archivos PDF automáticamente por socio comercial.",
+        "subtitle": "Create AR Balance Excel File automatically by partners.",
         "language": "Idioma",
         "excel_file": "Archivo Excel",
         "output_folder": "Carpeta de destino",
@@ -88,7 +88,7 @@ TEXTS = {
     "KR": {
         "title": "Excel 리포트 생성기",
         "header": "AR Balance Report Creator",
-        "subtitle": "거래선별로 리포트를 자동으로 분할하고 포맷팅합니다.",
+        "subtitle": "Create AR Balance Excel File automatically by partners.",
         "language": "언어",
         "excel_file": "원본 Excel 파일",
         "output_folder": "결과물 저장 폴더",
