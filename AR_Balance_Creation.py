@@ -28,13 +28,13 @@ BORDER = "#dadce0"
 LOG_BG = "#f8f9fa"
 
 # ─────────────────────────────
-# 다국어 지원 텍스트
+# 다국어 지원 텍스트 (기능에 맞춰 헤더, 서브타이틀, 예시 일괄 변경)
 # ─────────────────────────────
 TEXTS = {
     "EN": {
-        "title": "Excel Report Generator",
-        "header": "AR Balance Report Creator",
-        "subtitle": "Create AR Balance Excel File automatically by partners.",
+        "title": "Netting Excel Generator",
+        "header": "Netting Excel Generator",
+        "subtitle": "Format Excel files and generate netting summary automatically.",
         "language": "Language",
         "excel_file": "Excel file",
         "output_folder": "Output folder",
@@ -59,9 +59,9 @@ TEXTS = {
         "completed_msg": "Excel report generation is complete.\n\nSaved location:\n{}"
     },
     "ES": {
-        "title": "Generador de Reportes Excel",
-        "header": "AR Balance Report Creator",
-        "subtitle": "Create AR Balance Excel File automatically by partners.",
+        "title": "Generador de Excel Netting",
+        "header": "Generador de Excel Netting",
+        "subtitle": "Formatee archivos de Excel y genere un resumen de netting automáticamente.",
         "language": "Idioma",
         "excel_file": "Archivo Excel",
         "output_folder": "Carpeta de destino",
@@ -86,9 +86,9 @@ TEXTS = {
         "completed_msg": "La generación del reporte Excel ha finalizado.\n\nUbicación:\n{}"
     },
     "KR": {
-        "title": "Excel 리포트 생성기",
-        "header": "AR Balance Report Creator",
-        "subtitle": "Create AR Balance Excel File automatically by partners.",
+        "title": "Netting 엑셀 리포트 생성기",
+        "header": "Netting 엑셀 리포트 생성기",
+        "subtitle": "Excel 데이터를 포맷팅하고 상계(Netting) 요약본을 자동으로 생성합니다.",
         "language": "언어",
         "excel_file": "원본 Excel 파일",
         "output_folder": "결과물 저장 폴더",
@@ -117,13 +117,12 @@ TEXTS = {
 class App(tk.Tk):
     def __init__(self):
         super().__init__()
-        self.lang = tk.StringVar(value="ES")  # 기본 언어 스페인어로 지정 가능
+        self.lang = tk.StringVar(value="ES")  # 기본 언어 설정
         
         self.excel_file = tk.StringVar()
         self.output_folder = tk.StringVar()
         self.due_date = tk.StringVar()
 
-        self.title("Excel Report Generator")
         self.geometry("750x700")
         self.configure(bg=APP_BG)
 
@@ -286,7 +285,6 @@ class App(tk.Tk):
                 self._set_status(20, self.t("reading_excel"))
                 self._log(f"Reading target file: {os.path.basename(excel_path)}")
                 
-                # 시스템 유도 타이틀 행 무시 처리 자동화 스캔
                 temp_df = pd.read_excel(excel_path, header=None, nrows=30)
                 header_idx = 0
                 for i, row in temp_df.iterrows():
@@ -344,22 +342,18 @@ class App(tk.Tk):
                 if sort_cols:
                     df = df.sort_values(by=sort_cols, ascending=[True]*len(sort_cols))
 
-                # 💡 [요구사항 3] 날짜 데이터 형태 정제 (시간 분초 강제 삭제 및 YYYY-MM-DD 화)
                 for date_col in ['Fecha emisión', 'Fecha Vencimiento']:
                     if date_col in df.columns:
                         df[date_col] = pd.to_datetime(df[date_col], errors='coerce').dt.strftime('%Y-%m-%d').fillna('')
 
-                # 💡 [요구사항 2] 정해진 스페인어 컬럼 순서 배열 강제 조정
                 target_order = ['Código Cliente', 'Nombre Cliente', 'Tipología', 'Factura', 'Fecha emisión', 'Fecha Vencimiento', 'Importe', 'Balance', 'Referencia']
                 final_order = [col for col in target_order if col in df.columns]
                 df = df[final_order]
 
-                # 숫자 데이터 강제 파싱 및 결측치 수렴
                 for num_col in ['Importe', 'Balance']:
                     if num_col in df.columns:
                         df[num_col] = pd.to_numeric(df[num_col], errors='coerce').fillna(0)
 
-                # 💡 [요구사항 5] Summary Sheet 피벗 데이터 빌드
                 self._log("Generating Summary Data (Group by Client)...")
                 if 'Código Cliente' in df.columns and 'Nombre Cliente' in df.columns and 'Balance' in df.columns:
                     df_summary = df.groupby(['Código Cliente', 'Nombre Cliente'], as_index=False)['Balance'].sum()
@@ -375,45 +369,42 @@ class App(tk.Tk):
 
                 self._log("Applying strict fonts and colors styles via openpyxl...")
 
-                # 💡 [요구사항 1, 4, 5] 서식 통합 레이아웃 엔진 가동
                 with pd.ExcelWriter(output_filepath, engine='openpyxl') as writer:
                     df_summary.to_excel(writer, sheet_name='Summary', index=False)
                     df.to_excel(writer, sheet_name='Report Format', index=False)
+                    # 원본 시트는 아무 서식 변경 없이 원본 그대로 보존하여 데이터 로드
                     original_df.to_excel(writer, sheet_name='Original Data', index=False)
                     
                     workbook = writer.book
                     from openpyxl.styles import Font, PatternFill, Alignment, Border, Side
                     from openpyxl.utils import get_column_letter
 
-                    # 폰트 구성 객체 생성 (Arial Narrow, Size 10 고정)
-                    font_regular = Font(name='Arial Narrow', size=10)
-                    font_bold = Font(name='Arial Narrow', size=10, bold=True)
-                    font_red = Font(name='Arial Narrow', size=10, color='FF0000')
-                    font_red_bold = Font(name='Arial Narrow', size=10, color='FF0000', bold=True)
+                    # 💡 [요구사항 반영] Arial Narrow 대신 Aptos Narrow 폰트 적용
+                    font_regular = Font(name='Aptos Narrow', size=10)
+                    font_bold = Font(name='Aptos Narrow', size=10, bold=True)
+                    font_red = Font(name='Aptos Narrow', size=10, color='FF0000')
                     
                     header_fill = PatternFill(start_color='E8F0FE', end_color='E8F0FE', fill_type='solid')
-                    total_fill = PatternFill(start_color='F1F3F4', end_color='F1F3F4', fill_type='solid')
-                    
                     thin_side = Side(style='thin', color='DADCE0')
                     thin_border = Border(left=thin_side, right=thin_side, top=thin_side, bottom=thin_side)
                     
-                    # 💡 회계 금융 규격 커스텀 넘버 포맷 코드 (양수, 음수 괄호형, 0은 대시)
                     num_format = '#,##0.00;[Red](#,##0.00);"-"'
 
-                    for sheet_name in ['Summary', 'Report Format', 'Original Data']:
+                    # 💡 [요구사항 반영] 서식 순회 대상에서 'Original Data' 완전 제외 (Summary 및 Report Format만 반영)
+                    for sheet_name in ['Summary', 'Report Format']:
                         if sheet_name not in workbook.sheetnames:
                             continue
                         ws = workbook[sheet_name]
                         col_names = [str(cell.value).strip() for cell in ws[1]]
                         
-                        # 헤더 바인딩 서식
+                        # 헤더 스타일
                         for cell in ws[1]:
                             cell.font = font_bold
                             cell.fill = header_fill
                             cell.alignment = Alignment(horizontal='center', vertical='center')
                             cell.border = thin_border
                         
-                        # 전 데이터 셀 순회 적용
+                        # 본문 스타일 및 금융 규격 커스텀 넘버 포맷팅
                         for row in range(2, ws.max_row + 1):
                             for col in range(1, ws.max_column + 1):
                                 cell = ws.cell(row=row, column=col)
@@ -422,50 +413,23 @@ class App(tk.Tk):
                                 
                                 col_name = col_names[col-1] if col-1 < len(col_names) else ''
                                 
-                                # 수치 컬럼 탐색 서식 할당
-                                if col_name in ['Importe', 'Balance', 'Original Amount (Entered Curr.)', 'Balance Total']:
+                                if col_name in ['Importe', 'Balance']:
                                     cell.number_format = num_format
                                     if isinstance(cell.value, (int, float)) and cell.value < 0:
                                         cell.font = font_red
                                     cell.alignment = Alignment(horizontal='right')
-                                elif col_name in ['Código Cliente', 'Factura', 'Tipología', 'Fecha emisión', 'Fecha Vencimiento', 'Bill To Code', 'Invoice No.', 'AR Class']:
+                                elif col_name in ['Código Cliente', 'Factura', 'Tipología', 'Fecha emisión', 'Fecha Vencimiento']:
                                     cell.alignment = Alignment(horizontal='center')
                                 else:
                                     cell.alignment = Alignment(horizontal='left')
                         
-                        # Summary 하단 토탈 마감 빌드
-                        if sheet_name == 'Summary' and ws.max_row > 1:
-                            total_row = ws.max_row + 1
-                            
-                            c_lbl = ws.cell(row=total_row, column=1, value='Total')
-                            c_lbl.font = font_bold
-                            c_lbl.alignment = Alignment(horizontal='center')
-                            c_lbl.fill = total_fill
-                            c_lbl.border = thin_border
-                            
-                            c_emp = ws.cell(row=total_row, column=2, value='')
-                            c_emp.fill = total_fill
-                            c_emp.border = thin_border
-                            
-                            if 'Balance' in col_names:
-                                b_idx = col_names.index('Balance') + 1
-                                b_letter = get_column_letter(b_idx)
-                                formula = f"=SUM({b_letter}2:{b_letter}{total_row-1})"
-                                
-                                c_sum = ws.cell(row=total_row, column=b_idx, value=formula)
-                                c_sum.font = font_bold
-                                c_sum.number_format = num_format
-                                c_sum.alignment = Alignment(horizontal='right')
-                                c_sum.fill = total_fill
-                                c_sum.border = thin_border
+                        # 💡 [요구사항 반영] Summary 하단 Total 합계 라인 코드 통째로 삭제 처리 완료
                         
-                        # 가시성을 위한 자동 열 너비 계산 조절 알고리즘
+                        # 너비 보정
                         for col in ws.columns:
                             max_len = 0
                             for cell in col:
                                 val_str = str(cell.value or '')
-                                if val_str.startswith('='):
-                                    val_str = "1,000,000.00"
                                 max_len = max(max_len, len(val_str))
                             col_letter = get_column_letter(col[0].column)
                             ws.column_dimensions[col_letter].width = max(max_len + 4, 13)
