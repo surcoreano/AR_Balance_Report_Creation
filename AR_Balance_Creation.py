@@ -18,9 +18,9 @@ else:
     FN = "Arial"
     FM = "Consolas"
 
-APP_BG = "#f4f6f9"      # 배경 회색
-CARD_BG = "#ffffff"     # 메인 카드 흰색
-PRIMARY = "#1a73e8"     # 메인 포인트 컬러 (파랑)
+APP_BG = "#f4f6f9"
+CARD_BG = "#ffffff"
+PRIMARY = "#1a73e8"
 PRIMARY_DARK = "#1557b0"
 TEXT = "#202124"
 SUBTEXT = "#5f6368"
@@ -28,7 +28,7 @@ BORDER = "#dadce0"
 LOG_BG = "#f8f9fa"
 
 # ─────────────────────────────
-# 다국어 지원 텍스트
+# 다국어 지원 텍스트 (예시 텍스트 260625로 변경)
 # ─────────────────────────────
 TEXTS = {
     "EN": {
@@ -39,7 +39,7 @@ TEXTS = {
         "excel_file": "Excel file",
         "output_folder": "Output folder",
         "due_date": "Payment Due Date",
-        "due_date_hint": "Example: 210626 (YYMMDD)",
+        "due_date_hint": "Example: 260625 (YYMMDD)",
         "browse": "Browse",
         "start": "Start process",
         "ready": "Select an Excel file and output folder.",
@@ -66,7 +66,7 @@ TEXTS = {
         "excel_file": "Archivo Excel",
         "output_folder": "Carpeta de destino",
         "due_date": "Fecha de Vencimiento",
-        "due_date_hint": "Ejemplo: 210626 (YYMMDD)",
+        "due_date_hint": "Ejemplo: 260625 (YYMMDD)",
         "browse": "Buscar",
         "start": "Iniciar proceso",
         "ready": "Seleccione un archivo Excel y una carpeta de destino.",
@@ -93,7 +93,7 @@ TEXTS = {
         "excel_file": "원본 Excel 파일",
         "output_folder": "결과물 저장 폴더",
         "due_date": "Payment Due Date",
-        "due_date_hint": "예시: 210626 (YYMMDD 형식)",
+        "due_date_hint": "예시: 260625 (YYMMDD 형식)",
         "browse": "찾아보기",
         "start": "실행 시작",
         "ready": "Excel 파일과 저장할 폴더를 선택해주세요.",
@@ -117,7 +117,7 @@ TEXTS = {
 class App(tk.Tk):
     def __init__(self):
         super().__init__()
-        self.lang = tk.StringVar(value="EN")  # 기본 언어
+        self.lang = tk.StringVar(value="EN")
         
         self.excel_file = tk.StringVar()
         self.output_folder = tk.StringVar()
@@ -143,7 +143,6 @@ class App(tk.Tk):
         style.configure("Google.TCombobox", fieldbackground=APP_BG, background=APP_BG, padding=4)
 
     def _build_ui(self):
-        # 1. 상단 타이틀 및 언어 선택 (회색 배경 영역)
         top_frame = tk.Frame(self, bg=APP_BG, padx=30, pady=20)
         top_frame.pack(fill="x")
 
@@ -162,11 +161,9 @@ class App(tk.Tk):
         self.language_combo.pack(pady=(2, 0))
         self.language_combo.bind("<<ComboboxSelected>>", lambda e: self._apply_language())
 
-        # 2. 메인 입력 폼 (흰색 카드 영역)
         main_frame = tk.Frame(self, bg=CARD_BG, padx=30, pady=30, highlightbackground=BORDER, highlightthickness=1)
         main_frame.pack(fill="x", padx=20)
 
-        # 엑셀 파일
         self.excel_lbl = tk.Label(main_frame, font=(FN, 9, "bold"), bg=CARD_BG, fg=TEXT)
         self.excel_lbl.pack(anchor="w")
         excel_row = tk.Frame(main_frame, bg=CARD_BG)
@@ -176,7 +173,6 @@ class App(tk.Tk):
         self.excel_btn = tk.Button(excel_row, font=(FN, 9, "bold"), bg=CARD_BG, fg=PRIMARY, width=10, relief="solid", bd=1, command=self._browse_excel)
         self.excel_btn.pack(side="left", padx=(10, 0), ipady=4)
 
-        # 저장 폴더
         self.folder_lbl = tk.Label(main_frame, font=(FN, 9, "bold"), bg=CARD_BG, fg=TEXT)
         self.folder_lbl.pack(anchor="w")
         folder_row = tk.Frame(main_frame, bg=CARD_BG)
@@ -186,7 +182,6 @@ class App(tk.Tk):
         self.folder_btn = tk.Button(folder_row, font=(FN, 9, "bold"), bg=CARD_BG, fg=PRIMARY, width=10, relief="solid", bd=1, command=self._browse_folder)
         self.folder_btn.pack(side="left", padx=(10, 0), ipady=4)
 
-        # 날짜 입력
         self.date_lbl = tk.Label(main_frame, font=(FN, 9, "bold"), bg=CARD_BG, fg=TEXT)
         self.date_lbl.pack(anchor="w")
         date_row = tk.Frame(main_frame, bg=CARD_BG)
@@ -196,7 +191,6 @@ class App(tk.Tk):
         self.date_hint_lbl = tk.Label(date_row, font=(FN, 8), bg=CARD_BG, fg=SUBTEXT)
         self.date_hint_lbl.pack(side="left", padx=(10, 0))
 
-        # 3. 로그 창 및 진행 상황 (흰색 카드 영역)
         log_frame = tk.Frame(self, bg=CARD_BG, padx=20, pady=20, highlightbackground=BORDER, highlightthickness=1)
         log_frame.pack(fill="both", expand=True, padx=20, pady=20)
 
@@ -206,7 +200,6 @@ class App(tk.Tk):
         self.log = tk.Text(log_frame, height=6, font=(FM, 9), bg=LOG_BG, fg=TEXT, relief="solid", bd=1, padx=10, pady=10, state="disabled")
         self.log.pack(fill="both", expand=True)
 
-        # 4. 하단 상태 및 실행 버튼 (회색 배경 영역)
         bottom_frame = tk.Frame(self, bg=APP_BG, padx=20, pady=10)
         bottom_frame.pack(fill="x", side="bottom")
 
@@ -266,7 +259,6 @@ class App(tk.Tk):
         output_dir = self.output_folder.get().strip()
         due_date_str = self.due_date.get().strip()
 
-        # 사전 유효성 검사
         if not excel_path or not os.path.isfile(excel_path):
             messagebox.showerror(self.t("error"), self.t("excel_error"))
             return
@@ -284,25 +276,31 @@ class App(tk.Tk):
             self.status_lbl.config(text=self.t("cancelled"))
             return
 
-        # UI 요소 비활성화 및 초기화
         self.run_btn.config(state="disabled", bg="#9aa0a6")
         self.progress_var.set(0)
         self._clear_log()
         self._log(f"[{datetime.now().strftime('%H:%M:%S')}] Started processing...")
 
-        # 메인 로직 쓰레드 실행 (UI 멈춤 방지)
         def worker():
             try:
                 self._set_status(20, self.t("reading_excel"))
                 self._log(f"Reading target file: {os.path.basename(excel_path)}")
                 
-                original_df = pd.read_excel(excel_path)
+                # 💡 [핵심 보완] 숨겨진 행이나 타이틀이 있을 경우를 대비해 'Invoice No'가 있는 행을 자동 탐색
+                temp_df = pd.read_excel(excel_path, header=None, nrows=30)
+                header_idx = 0
+                for i, row in temp_df.iterrows():
+                    if any(pd.notna(val) and 'Invoice No' in str(val) for val in row.values):
+                        header_idx = i
+                        break
+                        
+                # 찾은 헤더(컬럼명) 위치를 기준으로 데이터를 정확히 다시 읽어옴
+                original_df = pd.read_excel(excel_path, header=header_idx)
                 df = original_df.copy()
 
                 self._set_status(40, self.t("processing"))
                 self._log("Processing Reference No...")
                 
-                # Reference No 빈 데이터 채우기
                 fill_cols = ['Reference No', 'PO No', 'Comments', 'Invoice Remark']
                 for col in fill_cols:
                     if col in df.columns:
@@ -316,21 +314,29 @@ class App(tk.Tk):
                 if 'Invoice Remark' in df.columns: df['Reference No'] = df['Reference No'].fillna(df['Invoice Remark'])
 
                 self._log("Filtering and renaming columns to Spanish...")
-                # 필요한 컬럼만 남기기
+                
+                # 💡 [핵심 보완] 시스템 엑셀 파일의 고질적인 띄어쓰기 문제(스페이스 2칸 등)를 1칸으로 자동 통일 보정
+                df.columns = [' '.join(str(c).split()) for c in df.columns]
+
+                # 띄어쓰기가 보정된 컬럼명으로 리스트 재설정
                 columns_to_keep = [
                     'Invoice No.', 'AR Class', 'Trx Date', 'Due Date', 
-                    'Original Amount  (Entered Curr.)', 'Balance Total', 
+                    'Original Amount (Entered Curr.)', 'Balance Total', 
                     'Bill To Code', 'Bill To Name', 'Reference No'
                 ]
                 existing_cols = [col for col in columns_to_keep if col in df.columns]
                 df = df[existing_cols]
 
-                # 스페인어로 컬럼명 및 데이터 변경
                 rename_dict = {
-                    'Invoice No.': 'Factura', 'AR Class': 'Tipología', 'Trx Date': 'Fecha emisión',
-                    'Due Date': 'Fecha Vencimiento', 'Original Amount  (Entered Curr.)': 'Importe',
-                    'Balance Total': 'Balance', 'Bill To Code': 'Código Cliente',
-                    'Bill To Name': 'Nombre Cliente', 'Reference No': 'Referencia'
+                    'Invoice No.': 'Factura', 
+                    'AR Class': 'Tipología', 
+                    'Trx Date': 'Fecha emisión',
+                    'Due Date': 'Fecha Vencimiento', 
+                    'Original Amount (Entered Curr.)': 'Importe',
+                    'Balance Total': 'Balance', 
+                    'Bill To Code': 'Código Cliente',
+                    'Bill To Name': 'Nombre Cliente', 
+                    'Reference No': 'Referencia'
                 }
                 df = df.rename(columns=rename_dict)
 
@@ -339,7 +345,7 @@ class App(tk.Tk):
                     df['Tipología'] = df['Tipología'].replace(ar_class_mapping)
 
                 self._log("Filtering dates and sorting data...")
-                # 날짜 기준 삭제 및 정렬
+                
                 if 'Fecha Vencimiento' in df.columns:
                     df['Fecha Vencimiento'] = pd.to_datetime(df['Fecha Vencimiento'], errors='coerce')
                     df = df[df['Fecha Vencimiento'] <= payment_due_date]
@@ -350,13 +356,13 @@ class App(tk.Tk):
 
                 self._set_status(70, self.t("saving"))
                 
-                # 파일 저장
                 filename = os.path.basename(excel_path)
                 name, ext = os.path.splitext(filename)
                 output_filepath = os.path.join(output_dir, f"{name}_Report{ext}")
 
                 self._log(f"Saving to: {output_filepath}")
 
+                # 파일 저장
                 with pd.ExcelWriter(output_filepath, engine='openpyxl', datetime_format='YYYY-MM-DD') as writer:
                     original_df.to_excel(writer, sheet_name='Original Data', index=False)
                     df.to_excel(writer, sheet_name='Report Format', index=False)
