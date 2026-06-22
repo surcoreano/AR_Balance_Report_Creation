@@ -1,4 +1,6 @@
 import os
+import re
+import calendar
 import threading
 import platform
 import pandas as pd
@@ -27,14 +29,11 @@ SUBTEXT = "#5f6368"
 BORDER = "#dadce0"
 LOG_BG = "#f8f9fa"
 
-# ─────────────────────────────
-# 다국어 지원 텍스트
-# ─────────────────────────────
 TEXTS = {
     "EN": {
         "title": "AR Balance Report Generator",
         "header": "AR Balance Report Generator",
-        "subtitle": "Format Excel/TSV files and generate AR Balance summary automatically.",
+        "subtitle": "Format Excel/TSV files and generate PDF & Excel automatically.",
         "language": "Language",
         "excel_file": "Data file (Excel/TSV)",
         "output_folder": "Output folder",
@@ -55,13 +54,13 @@ TEXTS = {
         "reading_excel": "Reading and analyzing data file...",
         "processing": "Formatting and filtering data...",
         "saving": "Applying styles and saving Excel file...",
-        "completed_status": "Completed successfully. File saved.",
-        "completed_msg": "Excel report generation is complete.\n\nSaved location:\n{}"
+        "completed_status": "Completed successfully. Files saved.",
+        "completed_msg": "Excel & PDF report generation is complete.\n\nSaved location:\n{}"
     },
     "ES": {
         "title": "Generador de Reportes AR Balance",
         "header": "Generador de Reportes AR Balance",
-        "subtitle": "Formatee archivos de Excel/TSV y genere un resumen automáticamente.",
+        "subtitle": "Formatee archivos de datos y genere Excel y PDFs automáticamente.",
         "language": "Idioma",
         "excel_file": "Archivo de datos (Excel/TSV)",
         "output_folder": "Carpeta de destino",
@@ -81,14 +80,14 @@ TEXTS = {
         "done": "Completado",
         "reading_excel": "Leyendo y analizando archivo de datos...",
         "processing": "Formateando y filtrando datos...",
-        "saving": "Aplicando estilos y guardando archivo Excel...",
-        "completed_status": "Completado con éxito. Archivo guardado.",
-        "completed_msg": "La generación del reporte Excel ha finalizado.\n\nUbicación:\n{}"
+        "saving": "Generando PDFs y archivo Excel...",
+        "completed_status": "Completado con éxito. Archivos guardados.",
+        "completed_msg": "La generación de Excel y PDFs ha finalizado.\n\nUbicación:\n{}"
     },
     "KR": {
         "title": "AR Balance 리포트 생성기",
         "header": "AR Balance 리포트 생성기",
-        "subtitle": "Excel 또는 TSV 데이터를 포맷팅하고 요약본을 자동으로 생성합니다.",
+        "subtitle": "데이터를 포맷팅하고 Excel 및 PDF 요약본을 자동으로 생성합니다.",
         "language": "언어",
         "excel_file": "원본 파일 (Excel/TSV)",
         "output_folder": "결과물 저장 폴더",
@@ -108,9 +107,9 @@ TEXTS = {
         "done": "완료",
         "reading_excel": "데이터를 읽고 분석하는 중...",
         "processing": "데이터를 포맷팅하고 필터링하는 중...",
-        "saving": "서식을 지정하고 정밀 저장하는 중...",
+        "saving": "Excel 서식 지정 및 PDF 생성 중...",
         "completed_status": "성공적으로 완료되었습니다.",
-        "completed_msg": "엑셀 리포트 생성이 완료되었습니다.\n\n저장 위치:\n{}"
+        "completed_msg": "Excel 및 개별 PDF 생성이 완료되었습니다.\n\n저장 위치:\n{}"
     }
 }
 
@@ -285,24 +284,21 @@ class App(tk.Tk):
 
         def worker():
             try:
-                self._set_status(20, self.t("reading_excel"))
+                self._set_status(10, self.t("reading_excel"))
                 self._log(f"Reading target file: {os.path.basename(file_path)}")
                 
                 file_ext = os.path.splitext(file_path)[1].lower()
                 is_tsv = file_ext in ['.tsv', '.txt', '.csv']
                 separator = ',' if file_ext == '.csv' else '\t'
                 
-                # 💡 [핵심 해결책] 안전한 파일 읽기 (인코딩 자동 추적 함수)
                 def safe_read_csv(path, sep, header_row=None, rows=None):
-                    # 서유럽, 한국어 등 ERP에서 쓰이는 주요 인코딩을 순차적으로 테스트하여 깨지지 않는 것을 선택
                     encodings_to_try = ['utf-8', 'cp1252', 'iso-8859-1', 'utf-16', 'utf-16-le', 'cp949', 'euc-kr']
                     for enc in encodings_to_try:
                         try:
-                            return pd.read_csv(path, sep=sep, header=header_row, nrows=rows, encoding=enc, low_memory=False)
+                            return pd.read_csv(path, sep=sep, header=header_row, nrows=rows, encoding=enc, low_memory=False, thousands=',')
                         except Exception:
                             continue
-                    # 모든 시도가 실패하더라도 강제로 읽어와 프로그램이 멈추지 않게 방어
-                    return pd.read_csv(path, sep=sep, header=header_row, nrows=rows, encoding='utf-8', encoding_errors='replace', low_memory=False)
+                    return pd.read_csv(path, sep=sep, header=header_row, nrows=rows, encoding='utf-8', encoding_errors='replace', low_memory=False, thousands=',')
 
                 if is_tsv:
                     temp_df = safe_read_csv(file_path, separator, header_row=None, rows=30)
@@ -324,8 +320,7 @@ class App(tk.Tk):
                     
                 df = original_df.copy()
 
-                self._set_status(40, self.t("processing"))
-                self._log("Processing Reference No tracking...")
+                self._set_status(30, self.t("processing"))
                 
                 fill_cols = ['Reference No', 'PO No', 'Comments', 'Invoice Remark']
                 for col in fill_cols:
@@ -339,7 +334,6 @@ class App(tk.Tk):
                 if 'Comments' in df.columns: df['Reference No'] = df['Reference No'].fillna(df['Comments'])
                 if 'Invoice Remark' in df.columns: df['Reference No'] = df['Reference No'].fillna(df['Invoice Remark'])
 
-                self._log("Filtering and renaming columns to Spanish...")
                 df.columns = [' '.join(str(c).split()) for c in df.columns]
 
                 columns_to_keep = [
@@ -362,10 +356,15 @@ class App(tk.Tk):
                 if 'Tipología' in df.columns:
                     df['Tipología'] = df['Tipología'].replace(ar_class_mapping)
 
-                self._log("Filtering dates and sorting data...")
+                # 💡 [요구사항 1 반영] 기준일의 '월말(Last day of the month)'을 계산하여 그 이후의 데이터만 필터링
+                last_day = calendar.monthrange(payment_due_date.year, payment_due_date.month)[1]
+                max_allowed_date = datetime(payment_due_date.year, payment_due_date.month, last_day)
+
+                self._log(f"Filtering dates strictly up to end of month: {max_allowed_date.strftime('%Y-%m-%d')}")
+                
                 if 'Fecha Vencimiento' in df.columns:
                     df['Fecha Vencimiento'] = pd.to_datetime(df['Fecha Vencimiento'], errors='coerce')
-                    df = df[df['Fecha Vencimiento'] <= payment_due_date]
+                    df = df[df['Fecha Vencimiento'] <= max_allowed_date]
 
                 sort_cols = [col for col in ['Nombre Cliente', 'Fecha Vencimiento'] if col in df.columns]
                 if sort_cols:
@@ -381,21 +380,140 @@ class App(tk.Tk):
 
                 for num_col in ['Importe', 'Balance']:
                     if num_col in df.columns:
+                        if df[num_col].dtype == 'object':
+                            df[num_col] = df[num_col].replace({',': ''}, regex=True)
                         df[num_col] = pd.to_numeric(df[num_col], errors='coerce').fillna(0)
 
-                self._log("Generating Summary Data (Group by Client)...")
                 if 'Código Cliente' in df.columns and 'Nombre Cliente' in df.columns and 'Balance' in df.columns:
                     df_summary = df.groupby(['Código Cliente', 'Nombre Cliente'], as_index=False)['Balance'].sum()
                     df_summary = df_summary.sort_values(by='Nombre Cliente', ascending=True)
                 else:
                     df_summary = pd.DataFrame(columns=['Código Cliente', 'Nombre Cliente', 'Balance'])
 
-                self._set_status(70, self.t("saving"))
+                # 💡 [요구사항 2 반영] 거래선별 PDF 자동 생성 로직
+                self._set_status(60, "Generating PDF reports...")
+                self._log("Creating individual PDF files...")
+                
+                pdf_dir = os.path.join(output_dir, "PDF files")
+                os.makedirs(pdf_dir, exist_ok=True)
+                
+                try:
+                    from reportlab.lib.pagesizes import A4, landscape
+                    from reportlab.lib import colors
+                    from reportlab.platypus import SimpleDocTemplate, Table, TableStyle, Paragraph, Spacer
+                    from reportlab.lib.styles import getSampleStyleSheet, ParagraphStyle
+                    
+                    styles = getSampleStyleSheet()
+                    title_style = ParagraphStyle('TitleStyle', parent=styles['Heading1'], fontName='Helvetica-Bold', fontSize=18, textColor=colors.HexColor("#1557b0"), spaceAfter=15, alignment=0)
+                    
+                    pdf_cols = ['Tipología', 'Factura', 'Fecha emisión', 'Fecha Vencimiento', 'Importe', 'Balance', 'Referencia']
+                    available_pdf_cols = [c for c in pdf_cols if c in df.columns]
+                    
+                    for (client_code, client_name), group_df in df.groupby(['Código Cliente', 'Nombre Cliente']):
+                        clean_name = re.sub(r'[\\/*?:"<>|]', "", str(client_name))
+                        
+                        dates = pd.to_datetime(group_df['Fecha Vencimiento'], errors='coerce')
+                        max_date_val = dates.max()
+                        max_date_str = max_date_val.strftime('%Y-%m-%d') if pd.notna(max_date_val) else ""
+                        
+                        total_bal = group_df['Balance'].sum()
+                        total_bal_fmt = f"({abs(total_bal):,.2f})" if total_bal < 0 else f"{total_bal:,.2f}"
+                        total_bal_filename = f"{total_bal:,.2f}".replace(",", "") # 파일명에 콤마 제거
+                        
+                        pdf_filename = f"{client_code}_{clean_name}_{max_date_str}_{total_bal_filename}.pdf"
+                        pdf_filepath = os.path.join(pdf_dir, pdf_filename)
+                        
+                        doc = SimpleDocTemplate(pdf_filepath, pagesize=landscape(A4), rightMargin=30, leftMargin=30, topMargin=30, bottomMargin=30)
+                        elements = []
+                        
+                        elements.append(Paragraph("AR Balance Report", title_style))
+                        elements.append(Spacer(1, 10))
+                        
+                        # [첫번째 블록 테이블]
+                        b1_data = [
+                            ["Nombre Cliente:", client_name, "Código Cliente:", client_code],
+                            ["Fecha Límite (Max):", max_date_str, "Importe Total (EUR):", total_bal_fmt]
+                        ]
+                        b1_table = Table(b1_data, colWidths=[120, 250, 120, 100], hAlign='LEFT')
+                        b1_table.setStyle(TableStyle([
+                            ('FONTNAME', (0,0), (-1,-1), 'Helvetica'),
+                            ('FONTNAME', (0,0), (0,-1), 'Helvetica-Bold'),
+                            ('FONTNAME', (2,0), (2,-1), 'Helvetica-Bold'),
+                            ('FONTSIZE', (0,0), (-1,-1), 10),
+                            ('TEXTCOLOR', (3,1), (3,1), colors.red if total_bal < 0 else colors.black),
+                            ('BOTTOMPADDING', (0,0), (-1,-1), 8),
+                        ]))
+                        elements.append(b1_table)
+                        elements.append(Spacer(1, 20))
+                        
+                        # [두번째 블록 테이블]
+                        table_data = [available_pdf_cols]
+                        custom_styles = [
+                            ('BACKGROUND', (0,0), (-1,0), colors.HexColor("#1557b0")),
+                            ('TEXTCOLOR', (0,0), (-1,0), colors.white),
+                            ('ALIGN', (0,0), (-1,-1), 'CENTER'),
+                            ('FONTNAME', (0,0), (-1,0), 'Helvetica-Bold'),
+                            ('FONTNAME', (0,1), (-1,-1), 'Helvetica'),
+                            ('FONTSIZE', (0,0), (-1,-1), 9),
+                            ('GRID', (0,0), (-1,-1), 0.5, colors.HexColor("#DADCE0")),
+                            ('BOTTOMPADDING', (0,0), (-1,-1), 6),
+                            ('TOPPADDING', (0,0), (-1,-1), 6),
+                        ]
+                        
+                        importe_idx = available_pdf_cols.index('Importe') if 'Importe' in available_pdf_cols else -1
+                        balance_idx = available_pdf_cols.index('Balance') if 'Balance' in available_pdf_cols else -1
+                        
+                        if importe_idx != -1: custom_styles.append(('ALIGN', (importe_idx,1), (importe_idx,-1), 'RIGHT'))
+                        if balance_idx != -1: custom_styles.append(('ALIGN', (balance_idx,1), (balance_idx,-1), 'RIGHT'))
+                        
+                        for r_idx, (_, row) in enumerate(group_df.iterrows(), start=1):
+                            row_data = []
+                            for c_idx, col in enumerate(available_pdf_cols):
+                                val = row.get(col, '')
+                                if col in ['Importe', 'Balance']:
+                                    try:
+                                        v = float(val)
+                                        s = f"({abs(v):,.2f})" if v < 0 else f"{v:,.2f}"
+                                        row_data.append(s)
+                                        if v < 0:
+                                            custom_styles.append(('TEXTCOLOR', (c_idx, r_idx), (c_idx, r_idx), colors.red))
+                                    except:
+                                        row_data.append(str(val))
+                                else:
+                                    row_data.append(str(val))
+                            table_data.append(row_data)
+                            
+                        # 합계 라인 추가
+                        total_row = ["Total"] + [""] * (len(available_pdf_cols) - 1)
+                        if balance_idx != -1:
+                            total_row[balance_idx] = f"({abs(total_bal):,.2f})" if total_bal < 0 else f"{total_bal:,.2f}"
+                            
+                        table_data.append(total_row)
+                        last_row_idx = len(table_data) - 1
+                        
+                        custom_styles.extend([
+                            ('BACKGROUND', (0, last_row_idx), (-1, last_row_idx), colors.HexColor("#F1F3F4")),
+                            ('FONTNAME', (0, last_row_idx), (-1, last_row_idx), 'Helvetica-Bold'),
+                            ('SPAN', (0, last_row_idx), (balance_idx - 1 if balance_idx > 0 else 0, last_row_idx)),
+                            ('ALIGN', (0, last_row_idx), (balance_idx - 1 if balance_idx > 0 else 0, last_row_idx), 'RIGHT'),
+                        ])
+                        if total_bal < 0 and balance_idx != -1:
+                            custom_styles.append(('TEXTCOLOR', (balance_idx, last_row_idx), (balance_idx, last_row_idx), colors.red))
+                            
+                        t = Table(table_data, repeatRows=1)
+                        t.setStyle(TableStyle(custom_styles))
+                        elements.append(t)
+                        
+                        doc.build(elements)
+                        
+                except ImportError:
+                    self._log("❌ The 'reportlab' library is missing. PDF generation skipped.")
+
+                self._set_status(85, self.t("saving"))
+                self._log("Saving strictly formatted Excel file...")
                 
                 today_str = datetime.now().strftime('%Y%m%d')
                 output_filepath = os.path.join(output_dir, f"{today_str} AR_Balance_Report.xlsx")
-
-                self._log("Applying strict fonts, colors and auto-filters via openpyxl...")
 
                 with pd.ExcelWriter(output_filepath, engine='openpyxl') as writer:
                     df_summary.to_excel(writer, sheet_name='Summary', index=False)
@@ -459,7 +577,7 @@ class App(tk.Tk):
 
                 self._set_status(100, self.t("completed_status"))
                 self._log(f"[{datetime.now().strftime('%H:%M:%S')}] Task completed successfully.")
-                messagebox.showinfo(self.t("done"), self.t("completed_msg").format(output_filepath))
+                messagebox.showinfo(self.t("done"), self.t("completed_msg").format(output_dir))
 
             except Exception as e:
                 self._set_status(0, f"{self.t('error')}: {e}")
