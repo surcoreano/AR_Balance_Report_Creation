@@ -28,23 +28,23 @@ BORDER = "#dadce0"
 LOG_BG = "#f8f9fa"
 
 # ─────────────────────────────
-# 다국어 지원 텍스트 (AR Balance 용도로 전면 수정)
+# 다국어 지원 텍스트
 # ─────────────────────────────
 TEXTS = {
     "EN": {
         "title": "AR Balance Report Generator",
         "header": "AR Balance Report Generator",
-        "subtitle": "Format Excel files and generate AR Balance summary automatically.",
+        "subtitle": "Format Excel/TSV files and generate AR Balance summary automatically.",
         "language": "Language",
-        "excel_file": "Excel file",
+        "excel_file": "Data file (Excel/TSV)",
         "output_folder": "Output folder",
         "due_date": "Payment Due Date",
         "due_date_hint": "Example: 260625 (YYMMDD)",
         "browse": "Browse",
         "start": "Start process",
-        "ready": "Select an Excel file and output folder.",
+        "ready": "Select a data file and output folder.",
         "log": "Result Log",
-        "excel_error": "Please select a valid Excel file.",
+        "excel_error": "Please select a valid Excel or TSV file.",
         "folder_error": "Please select a valid Output folder.",
         "date_error": "Please enter the date in YYMMDD format.",
         "confirm_title": "Confirmation",
@@ -52,7 +52,7 @@ TEXTS = {
         "cancelled": "Process cancelled.",
         "error": "Error",
         "done": "Completed",
-        "reading_excel": "Reading and analyzing Excel data...",
+        "reading_excel": "Reading and analyzing data file...",
         "processing": "Formatting and filtering data...",
         "saving": "Applying styles and saving Excel file...",
         "completed_status": "Completed successfully. File saved.",
@@ -61,17 +61,17 @@ TEXTS = {
     "ES": {
         "title": "Generador de Reportes AR Balance",
         "header": "Generador de Reportes AR Balance",
-        "subtitle": "Formatee archivos de Excel y genere un resumen de AR Balance automáticamente.",
+        "subtitle": "Formatee archivos de Excel/TSV y genere un resumen automáticamente.",
         "language": "Idioma",
-        "excel_file": "Archivo Excel",
+        "excel_file": "Archivo de datos (Excel/TSV)",
         "output_folder": "Carpeta de destino",
         "due_date": "Fecha de Vencimiento",
         "due_date_hint": "Ejemplo: 260625 (YYMMDD)",
         "browse": "Buscar",
         "start": "Iniciar proceso",
-        "ready": "Seleccione un archivo Excel y una carpeta de destino.",
+        "ready": "Seleccione un archivo de datos y una carpeta.",
         "log": "Registro de resultados",
-        "excel_error": "Seleccione un archivo Excel válido.",
+        "excel_error": "Seleccione un archivo Excel o TSV válido.",
         "folder_error": "Seleccione una carpeta de destino válida.",
         "date_error": "Ingrese la fecha en formato YYMMDD.",
         "confirm_title": "Confirmación",
@@ -79,26 +79,26 @@ TEXTS = {
         "cancelled": "Proceso cancelado.",
         "error": "Error",
         "done": "Completado",
-        "reading_excel": "Leyendo y analizando datos de Excel...",
+        "reading_excel": "Leyendo y analizando archivo de datos...",
         "processing": "Formateando y filtrando datos...",
         "saving": "Aplicando estilos y guardando archivo Excel...",
         "completed_status": "Completado con éxito. Archivo guardado.",
         "completed_msg": "La generación del reporte Excel ha finalizado.\n\nUbicación:\n{}"
     },
     "KR": {
-        "title": "AR Balance 엑셀 리포트 생성기",
-        "header": "AR Balance 엑셀 리포트 생성기",
-        "subtitle": "Excel 데이터를 포맷팅하고 AR Balance 요약본을 자동으로 생성합니다.",
+        "title": "AR Balance 리포트 생성기",
+        "header": "AR Balance 리포트 생성기",
+        "subtitle": "Excel 또는 TSV 데이터를 포맷팅하고 요약본을 자동으로 생성합니다.",
         "language": "언어",
-        "excel_file": "원본 Excel 파일",
+        "excel_file": "원본 파일 (Excel/TSV)",
         "output_folder": "결과물 저장 폴더",
         "due_date": "Payment Due Date",
         "due_date_hint": "예시: 260625 (YYMMDD 형식)",
         "browse": "찾아보기",
         "start": "실행 시작",
-        "ready": "Excel 파일과 저장할 폴더를 선택해주세요.",
+        "ready": "원본 파일과 저장할 폴더를 선택해주세요.",
         "log": "진행 로그",
-        "excel_error": "올바른 Excel 파일을 선택해주세요.",
+        "excel_error": "올바른 Excel 또는 TSV 파일을 선택해주세요.",
         "folder_error": "올바른 저장 폴더를 선택해주세요.",
         "date_error": "날짜를 정확히 YYMMDD 형식으로 입력해주세요.",
         "confirm_title": "확인",
@@ -106,7 +106,7 @@ TEXTS = {
         "cancelled": "작업이 취소되었습니다.",
         "error": "오류",
         "done": "완료",
-        "reading_excel": "Excel 데이터를 읽고 분석하는 중...",
+        "reading_excel": "데이터를 읽고 분석하는 중...",
         "processing": "데이터를 포맷팅하고 필터링하는 중...",
         "saving": "서식을 지정하고 정밀 저장하는 중...",
         "completed_status": "성공적으로 완료되었습니다.",
@@ -230,7 +230,10 @@ class App(tk.Tk):
         self.log_lbl.config(text=self.t("log"))
 
     def _browse_excel(self):
-        path = filedialog.askopenfilename(title=self.t("excel_file"), filetypes=[("Excel files", "*.xlsx *.xls")])
+        path = filedialog.askopenfilename(
+            title=self.t("excel_file"), 
+            filetypes=[("Data files", "*.xlsx *.xls *.tsv *.csv *.txt"), ("All files", "*.*")]
+        )
         if path: self.excel_file.set(path)
 
     def _browse_folder(self):
@@ -254,11 +257,11 @@ class App(tk.Tk):
         self.log.config(state="disabled")
 
     def _run(self):
-        excel_path = self.excel_file.get().strip()
+        file_path = self.excel_file.get().strip()
         output_dir = self.output_folder.get().strip()
         due_date_str = self.due_date.get().strip()
 
-        if not excel_path or not os.path.isfile(excel_path):
+        if not file_path or not os.path.isfile(file_path):
             messagebox.showerror(self.t("error"), self.t("excel_error"))
             return
         if not output_dir or not os.path.isdir(output_dir):
@@ -283,16 +286,36 @@ class App(tk.Tk):
         def worker():
             try:
                 self._set_status(20, self.t("reading_excel"))
-                self._log(f"Reading target file: {os.path.basename(excel_path)}")
+                self._log(f"Reading target file: {os.path.basename(file_path)}")
                 
-                temp_df = pd.read_excel(excel_path, header=None, nrows=30)
+                file_ext = os.path.splitext(file_path)[1].lower()
+                is_tsv = file_ext in ['.tsv', '.txt', '.csv']
+                separator = ',' if file_ext == '.csv' else '\t'
+                
+                if is_tsv:
+                    try:
+                        temp_df = pd.read_csv(file_path, sep=separator, header=None, nrows=30, encoding='utf-8')
+                    except UnicodeDecodeError:
+                        temp_df = pd.read_csv(file_path, sep=separator, header=None, nrows=30, encoding='utf-16')
+                else:
+                    temp_df = pd.read_excel(file_path, header=None, nrows=30)
+                
                 header_idx = 0
                 for i, row in temp_df.iterrows():
                     if any(pd.notna(val) and 'Invoice No' in str(val) for val in row.values):
                         header_idx = i
                         break
-                        
-                original_df = pd.read_excel(excel_path, header=header_idx)
+                
+                self._log(f"Header found at row {header_idx + 1}. Loading full data...")
+                
+                if is_tsv:
+                    try:
+                        original_df = pd.read_csv(file_path, sep=separator, header=header_idx, encoding='utf-8')
+                    except UnicodeDecodeError:
+                        original_df = pd.read_csv(file_path, sep=separator, header=header_idx, encoding='utf-16')
+                else:
+                    original_df = pd.read_excel(file_path, header=header_idx)
+                    
                 df = original_df.copy()
 
                 self._set_status(40, self.t("processing"))
@@ -363,11 +386,11 @@ class App(tk.Tk):
 
                 self._set_status(70, self.t("saving"))
                 
-                filename = os.path.basename(excel_path)
-                name, ext = os.path.splitext(filename)
-                output_filepath = os.path.join(output_dir, f"{name}_Report{ext}")
+                # 💡 [요구사항 반영] 고정된 파일명 대신 오늘 날짜가 포함된 "(생성일) AR_Balance_Report" 형식으로 설정
+                today_str = datetime.now().strftime('%Y%m%d')
+                output_filepath = os.path.join(output_dir, f"{today_str} AR_Balance_Report.xlsx")
 
-                self._log("Applying strict fonts, colors and auto-filters via openpyxl...")
+                self._log(f"Saving file as: {os.path.basename(output_filepath)}")
 
                 with pd.ExcelWriter(output_filepath, engine='openpyxl') as writer:
                     df_summary.to_excel(writer, sheet_name='Summary', index=False)
