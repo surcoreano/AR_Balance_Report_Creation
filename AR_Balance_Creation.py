@@ -1,5 +1,6 @@
 import os
 import re
+import html
 import calendar
 import threading
 import platform
@@ -116,11 +117,15 @@ TEXTS = {
     }
 }
 
-# 💡 [요구사항 5, 6 반영] 실시간 동적 페이지 장식 및 번호 마감 엔진
+# ─────────────────────────────
+# 고도화된 안정형 NumberedCanvas 엔진
+# ─────────────────────────────
 from reportlab.pdfgen import canvas
+from reportlab.lib import colors
+
 class NumberedCanvas(canvas.Canvas):
     def __init__(self, *args, **kwargs):
-        super().__init__(*args, **kwargs)
+        canvas.Canvas.__init__(self, *args, **kwargs)
         self._saved_page_states = []
 
     def showPage(self):
@@ -131,26 +136,22 @@ class NumberedCanvas(canvas.Canvas):
         num_pages = len(self._saved_page_states)
         for state in self._saved_page_states:
             self.__dict__.update(state)
-            self.draw_page_decorations(num_pages)
-            super().showPage()
-        super().save()
-
-    def draw_page_decorations(self, page_count):
-        self.saveState()
-        self.setFont("Helvetica", 9)
-        from reportlab.lib import colors
-        self.setFillColor(colors.HexColor("#5f6368"))
-        
-        # 5. 리포트 생성일 기입 (각 페이지 우측 최상단 고정 배치)
-        today_str = datetime.now().strftime('%Y-%m-%d')
-        self.drawRightString(841.89 - 30, 595.27 - 25, f"Fecha de emisión: {today_str}")
-        
-        # 6. 복수 페이지 초과 시 하단 중앙 페이지 넘버링 출력 (1/2, 2/2 등)
-        if page_count > 1:
-            page_text = f"{self._pageNumber} / {page_count}"
-            self.drawCentredString(841.89 / 2, 20, page_text)
+            self.saveState()
+            self.setFont("Helvetica", 9)
+            self.setFillColor(colors.HexColor("#5f6368"))
             
-        self.restoreState()
+            # 생성일 기입 (우측 최상단 고정)
+            today_str = datetime.now().strftime('%Y-%m-%d')
+            self.drawRightString(841.89 - 30, 595.27 - 25, f"Fecha de emisión: {today_str}")
+            
+            # 복수 페이지 초과 시 하단 중앙 페이지 넘버링 출력
+            if num_pages > 1:
+                page_text = f"{self._pageNumber} / {num_pages}"
+                self.drawCentredString(841.89 / 2, 20, page_text)
+                
+            self.restoreState()
+            canvas.Canvas.showPage(self)
+        canvas.Canvas.save(self)
 
 
 class App(tk.Tk):
@@ -396,7 +397,6 @@ class App(tk.Tk):
                 if 'Tipología' in df.columns:
                     df['Tipología'] = df['Tipología'].replace(ar_class_mapping)
 
-                # 💡 [요구사항 1] 기준일의 '해당 월의 마지막 날짜' 계산 (익월 미래 데이터만 제거)
                 last_day = calendar.monthrange(payment_due_date.year, payment_due_date.month)[1]
                 max_allowed_date = datetime(payment_due_date.year, payment_due_date.month, last_day)
 
@@ -430,7 +430,6 @@ class App(tk.Tk):
                 else:
                     df_summary = pd.DataFrame(columns=['Código Cliente', 'Nombre Cliente', 'Balance'])
 
-                # 💡 개별 거래선 PDF 일괄 자동 빌드 엔진 시작
                 self._set_status(60, "Generating PDF reports...")
                 self._log("Creating individual PDF files...")
                 
@@ -439,13 +438,10 @@ class App(tk.Tk):
                 
                 try:
                     from reportlab.lib.pagesizes import A4, landscape
-                    from reportlab.lib import colors
                     from reportlab.platypus import SimpleDocTemplate, Table, TableStyle, Paragraph, Spacer
                     from reportlab.lib.styles import getSampleStyleSheet, ParagraphStyle
                     
                     styles = getSampleStyleSheet()
-                    
-                    # 💡 [요구사항 2 번역] 거래선 전용 자산 명칭으로 변환 완료
                     title_style = ParagraphStyle('TitleStyle', parent=styles['Heading1'], fontName='Helvetica-Bold', fontSize=18, textColor=colors.HexColor("#1557b0"), spaceAfter=5, alignment=0)
                     
                     pdf_cols = ['Tipología', 'Factura', 'Fecha emisión', 'Fecha Vencimiento', 'Importe', 'Balance', 'Referencia']
@@ -454,7 +450,7 @@ class App(tk.Tk):
                     for (client_code, client_name), group_df in df.groupby(['Código Cliente', 'Nombre Cliente']):
                         total_bal = group_df['Balance'].sum()
                         
-                        # 💡 [요구사항 1 반영] 총 잔액이 음수(마이너스)인 거래선은 PDF 출력을 원천 차단
+                        # [요구사항 1] 잔액이 음수인 거래선은 PDF 생성 생략
                         if total_bal < 0:
                             continue
                             
@@ -473,10 +469,11 @@ class App(tk.Tk):
                         doc = SimpleDocTemplate(pdf_filepath, pagesize=landscape(A4), rightMargin=30, leftMargin=30, topMargin=40, bottomMargin=40)
                         elements = []
                         
-                        elements.append(Paragraph("ESTADO DE CUCTA CLIENTE", title_style))
+                        # [요구사항 2] 거래선 관점의 스페인어 명칭 전면 적용
+                        elements.append(Paragraph("ESTADO DE CUENTA CLIENTE", title_style))
                         elements.append(Spacer(1, 15))
                         
-                        # 💡 [요구사항 3, 4 반영] 상단 마스터 테이블 규격을 하단과 100% 동기화 (총너비 781.89)
+                        # [요구사항 3, 4] 상단 테이블 규격 및 여백 정밀 동기화
                         b1_data = [
                             ["Nombre Cliente:", client_name, "Código Cliente:", client_code],
                             ["Fecha Límite:", max_date_str, "Importe Total (EUR):", total_bal_fmt]
@@ -497,11 +494,9 @@ class App(tk.Tk):
                             ('RIGHTPADDING', (0,0), (-1,-1), 10),
                         ]))
                         elements.append(b1_table)
-                        
-                        # 💡 [요구사항 3 반영] 첫번째 테이블과 두번째 테이블 사이에 명확한 간격(Spacer) 배치
                         elements.append(Spacer(1, 25))
                         
-                        # 하단 데이터 리포트 테이블 레이아웃 구성 (총너비 781.89)
+                        # 하단 세부 내역 테이블 구성
                         table_data = [available_pdf_cols]
                         custom_styles = [
                             ('BACKGROUND', (0,0), (-1,0), colors.HexColor("#1557b0")),
@@ -521,9 +516,7 @@ class App(tk.Tk):
                         if importe_idx != -1: custom_styles.append(('ALIGN', (importe_idx,1), (importe_idx,-1), 'RIGHT'))
                         if balance_idx != -1: custom_styles.append(('ALIGN', (balance_idx,1), (balance_idx,-1), 'RIGHT'))
                         
-                        # 긴 텍스트의 표 내부 자동 줄바꿈(Wrap) 처리를 위한 셀 스타일 객체 정의
                         cell_para_style = ParagraphStyle('CellPara', fontName='Helvetica', fontSize=9, leading=11)
-                        cell_para_style_red = ParagraphStyle('CellParaRed', fontName='Helvetica', fontSize=9, leading=11, textColor=colors.red)
                         
                         for r_idx, (_, row) in enumerate(group_df.iterrows(), start=1):
                             row_data = []
@@ -539,13 +532,13 @@ class App(tk.Tk):
                                     except:
                                         row_data.append(str(val))
                                 elif col == 'Referencia':
-                                    # 긴 참조 코드가 표 밖으로 튕겨나가지 않도록 Paragraph 래핑 처리
-                                    row_data.append(Paragraph(str(val), cell_para_style))
+                                    # 💡 [핵심 보완] 특수문자 깨짐 오류 방지를 위해 내장 이스케이프 래핑 적용
+                                    safe_text = html.escape(str(val))
+                                    row_data.append(Paragraph(safe_text, cell_para_style))
                                 else:
                                     row_data.append(str(val))
                             table_data.append(row_data)
                             
-                        # 마감 합계행 추가
                         total_row = ["Total"] + [""] * (len(available_pdf_cols) - 1)
                         if balance_idx != -1:
                             total_row[balance_idx] = f"{total_bal:,.2f}"
@@ -564,7 +557,6 @@ class App(tk.Tk):
                         t.setStyle(TableStyle(custom_styles))
                         elements.append(t)
                         
-                        # 💡 수렴 빌드 시 제어 클래스(NumberedCanvas) 연동 주입
                         doc.build(elements, canvasmaker=NumberedCanvas)
                         
                 except Exception as e:
@@ -573,6 +565,7 @@ class App(tk.Tk):
                 self._set_status(85, self.t("saving"))
                 self._log("Saving strictly formatted Excel file...")
                 
+                today_str = datetime.now().strftime('%Y%m%d')
                 output_filepath = os.path.join(output_dir, f"{today_str} AR_Balance_Report.xlsx")
 
                 with pd.ExcelWriter(output_filepath, engine='openpyxl') as writer:
