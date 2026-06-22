@@ -292,11 +292,20 @@ class App(tk.Tk):
                 is_tsv = file_ext in ['.tsv', '.txt', '.csv']
                 separator = ',' if file_ext == '.csv' else '\t'
                 
+                # 💡 [핵심 해결책] 안전한 파일 읽기 (인코딩 자동 추적 함수)
+                def safe_read_csv(path, sep, header_row=None, rows=None):
+                    # 서유럽, 한국어 등 ERP에서 쓰이는 주요 인코딩을 순차적으로 테스트하여 깨지지 않는 것을 선택
+                    encodings_to_try = ['utf-8', 'cp1252', 'iso-8859-1', 'utf-16', 'utf-16-le', 'cp949', 'euc-kr']
+                    for enc in encodings_to_try:
+                        try:
+                            return pd.read_csv(path, sep=sep, header=header_row, nrows=rows, encoding=enc, low_memory=False)
+                        except Exception:
+                            continue
+                    # 모든 시도가 실패하더라도 강제로 읽어와 프로그램이 멈추지 않게 방어
+                    return pd.read_csv(path, sep=sep, header=header_row, nrows=rows, encoding='utf-8', encoding_errors='replace', low_memory=False)
+
                 if is_tsv:
-                    try:
-                        temp_df = pd.read_csv(file_path, sep=separator, header=None, nrows=30, encoding='utf-8')
-                    except UnicodeDecodeError:
-                        temp_df = pd.read_csv(file_path, sep=separator, header=None, nrows=30, encoding='utf-16')
+                    temp_df = safe_read_csv(file_path, separator, header_row=None, rows=30)
                 else:
                     temp_df = pd.read_excel(file_path, header=None, nrows=30)
                 
@@ -309,10 +318,7 @@ class App(tk.Tk):
                 self._log(f"Header found at row {header_idx + 1}. Loading full data...")
                 
                 if is_tsv:
-                    try:
-                        original_df = pd.read_csv(file_path, sep=separator, header=header_idx, encoding='utf-8')
-                    except UnicodeDecodeError:
-                        original_df = pd.read_csv(file_path, sep=separator, header=header_idx, encoding='utf-16')
+                    original_df = safe_read_csv(file_path, separator, header_row=header_idx)
                 else:
                     original_df = pd.read_excel(file_path, header=header_idx)
                     
@@ -386,11 +392,10 @@ class App(tk.Tk):
 
                 self._set_status(70, self.t("saving"))
                 
-                # 💡 [요구사항 반영] 고정된 파일명 대신 오늘 날짜가 포함된 "(생성일) AR_Balance_Report" 형식으로 설정
                 today_str = datetime.now().strftime('%Y%m%d')
                 output_filepath = os.path.join(output_dir, f"{today_str} AR_Balance_Report.xlsx")
 
-                self._log(f"Saving file as: {os.path.basename(output_filepath)}")
+                self._log("Applying strict fonts, colors and auto-filters via openpyxl...")
 
                 with pd.ExcelWriter(output_filepath, engine='openpyxl') as writer:
                     df_summary.to_excel(writer, sheet_name='Summary', index=False)
